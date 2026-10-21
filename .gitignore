@@ -1,0 +1,7 @@
+third_party/
+data/
+logs/
+__marimo__/
+.venv/
+__pycache__/
+*.pyc

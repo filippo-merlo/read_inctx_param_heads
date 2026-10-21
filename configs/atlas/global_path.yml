@@ -1,0 +1,3 @@
+data_root_path: @ROOT@/qa_dataset
+models_root_path: /home/users/fmerlo/data/huggingface
+result_path: @ROOT@/results

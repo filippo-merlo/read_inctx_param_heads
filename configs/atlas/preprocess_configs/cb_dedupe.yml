@@ -1,0 +1,4 @@
+generation_path: @ROOT@/results/ablation/cb_dedupe
+version: cb_dedupe
+model: llama
+model_alias: meta-llama/Llama-3.1-8B-Instruct

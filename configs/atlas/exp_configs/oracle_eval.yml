@@ -1,0 +1,17 @@
+version: oracle
+model: llama
+batch_sz: 1
+model_alias: meta-llama/Llama-3.1-8B-Instruct
+retriever: None
+max_length: 20
+dataset: nq-swap
+num_workers: 0  # I/O only; 8 forked workers per run exceed this node's strict commit limit
+hf_home: /home/users/fmerlo/data/huggingface
+n_docs: 1
+gold_ctx: true
+counterfactual_ctx: false
+dedupe: false
+evals_only: true
+wandb:
+  project: atlas-repro
+  entity: null
