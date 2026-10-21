@@ -63,6 +63,9 @@ case $STAGE in
     run ablation_infer "evals_$3.log" main.py --config_file "$3_eval.yml" ;;
   bem)
     export CUDA_VISIBLE_DEVICES=$4
+    # spaCy's transformer runs on CPU; its default of one thread per core oversubscribes
+    # the node next to the GPU jobs (3.8 s/item measured, vs 0.14 s/item at 8 threads).
+    export OMP_NUM_THREADS=8
     run preprocessing "bem_$3.log" score_bem.py --config_file "$3.yml" ;;
   relevance)
     export CUDA_VISIBLE_DEVICES=$4
