@@ -81,12 +81,15 @@ class Reader:
         *,
         k: int = 10,
         attention_layer: int | None = None,
+        target: int | None = None,
     ) -> dict:
         """Top-k tokens of each ``(layer, head)`` at ``position`` under both lenses.
 
         Returns ``{"jhead": (ids, logits), "logithead": (ids, logits)}`` with ``[n_heads, k]``
         tensors in the order of ``heads``, plus ``"attention"``: the ``[n_heads, seq, seq]``
-        weights of ``attention_layer`` when one is given.
+        weights of ``attention_layer`` when one is given, and ``"target"``:
+        ``{lens: (rank, logit)}`` with ``[n_heads]`` tensors when a ``target`` token id is
+        given. The rank is 0-based: the number of tokens the head scores strictly higher.
         """
         from src.hooks import AnchorRecorder
         from src.readout import all_heads_transported
@@ -125,6 +128,10 @@ class Reader:
             logits = self.model.unembed(vectors).float()
             values, token_ids = logits.topk(k, dim=-1)
             result[lens] = (token_ids.cpu(), values.cpu())
+            if target is not None:
+                target_logit = logits[:, target]
+                rank = (logits > target_logit[:, None]).sum(-1)
+                result.setdefault("target", {})[lens] = (rank.cpu(), target_logit.cpu())
         if "attention" in captured:
             result["attention"] = captured["attention"]
         return result

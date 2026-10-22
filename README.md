@@ -11,6 +11,9 @@ Logit-head readouts of [Head-JLens](https://github.com/filippo-merlo/head_level_
 - `explore_heads.py` is a marimo notebook. It sets out the method, compares the re-run with
   the paper, and lets you read any identified head at any position of an NQ-Swap or
   free-text prompt.
+- `heads_from_readings.py` is a marimo notebook. It asks whether the readings alone tell
+  in-context from parametric heads, reading all 1,024 heads at the position and answer token
+  that AttnLRP explains.
 
 ## Setup
 
@@ -26,8 +29,10 @@ uv sync                  # notebook env: head_level_jlens (../head_level_jlens) 
 
 ```bash
 scripts/run_all.sh full 0 2 3 5                     # official pipeline on four GPUs -> results/heads.json
-.venv/bin/python scripts/decode_categories.py --gpu 0 # per-head top-k tokens for the notebook
+.venv/bin/python scripts/decode_categories.py --gpu 0 # per-head top-k tokens for explore_heads.py
+.venv/bin/python scripts/decode_targets.py --gpu 0    # all heads at the AttnLRP targets, for heads_from_readings.py
 HEADS_GPU=0 .venv/bin/marimo edit explore_heads.py
+.venv/bin/marimo edit heads_from_readings.py           # no GPU needed
 ```
 
 `scripts/run_atlas.sh` runs single stages; `scripts/run_all.sh smoke` runs every stage on
