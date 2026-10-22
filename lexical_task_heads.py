@@ -233,7 +233,7 @@ def _(atlas_role, decoded, hr, lens_name, lexical, pd, score, task_rank):
 
 
 @app.cell(hide_code=True)
-def _(comparison, mo, summary):
+def _(agreement_figure, comparison, mo, summary):
     mo.vstack([
         mo.md(r"""
         ## 3 Results
@@ -246,34 +246,81 @@ def _(comparison, mo, summary):
         also a J-head one, and J-head adds heads in layers 13 to 17, where Logit-head
         readings give mostly word fragments (`heads_from_readings.py`, Section 3.1).
 
-        Two Atlas sets show some agreement (Table 2). Under J-head, the overlap with the
+        Two Atlas sets show some agreement (Figure 1, Table 2). Under J-head, the overlap with the
         task heads is about twice what the two sets' layer profiles alone would give, and
         the 40 heads with the highest score hold several task heads where a random draw
         would hold one or two. Under Logit-head, the task overlap is two heads, L16H25 and
         L15H21, little more than depth alone predicts. The parametric heads are the other
         set: under both readouts, the 100 heads with the highest score hold about twice as
         many parametric heads as a random draw. Under J-head the parametric overlap also
-        exceeds what depth predicts; under Logit-head depth accounts for it. Parametric
-        heads lie late in the network, where many lexical task heads also lie, so part of
-        this agreement follows from depth.
+        exceeds what depth predicts; under Logit-head depth accounts for it. The parametric
+        heads form two groups, one in the middle layers and one in the last five layers
+        (Figure 2). All the parametric heads that are lexical task heads belong to the
+        middle group, which shares its layers with most lexical task heads.
 
         The in-context heads are, if anything, rarer among the high-scoring heads than in a
         random draw, and the retrieval heads overlap no more than depth predicts. For the
         retrieval heads this is partly by construction: they write the answer, and the
         answer token is removed from every item's task words.
         """),
+        agreement_figure,
+        mo.md(
+            "**Figure 1.** Each Atlas set against each readout's lexical task heads: the "
+            "number of heads observed (dark dot) and the number expected by chance (grey "
+            "ring). Left, the lexical task heads that are in the Atlas set, against a set with "
+            "the same layer profile. Right, the heads of the Atlas set among the $m$ heads "
+            "with the highest score, against $m$ random heads. A dark dot to the right of its "
+            "ring is agreement beyond chance. Hover a dot for both numbers."
+        ),
         mo.md("**Table 1.** Each readout's lexical task heads."),
         mo.ui.table(summary, selection=None, pagination=False, show_column_summaries=False),
-        mo.md("**Table 2.** Each readout's lexical task heads against each Atlas set "
-              "(Section 2.4). $m$ is the size of the Atlas set."),
+        mo.md("**Table 2.** The numbers of Figure 1 (Section 2.4). $m$ is the size of the "
+              "Atlas set."),
         mo.ui.table(comparison, selection=None, pagination=False, show_column_summaries=False),
     ])
     return
 
 
 @app.cell(hide_code=True)
+def _(alt, comparison, pd):
+    _ink, _chance = "#262624", "#8f8f8a"
+    _kinds = alt.Scale(domain=["Observed", "Expected by chance"], range=[_ink, _chance])
+    _sets = ["task", "retrieval", "in-context", "parametric"]
+
+    def _panel(observed, expected, title):
+        _frame = comparison.assign(observed=comparison[observed], expected=comparison[expected])
+        _base = alt.Chart(_frame).encode(
+            y=alt.Y("Readout:N", title=None),
+            tooltip=["Atlas set", "Readout", alt.Tooltip("observed:Q", format=".1f"),
+                     alt.Tooltip("expected:Q", title="expected by chance", format=".1f")],
+        )
+        _x = alt.X("expected:Q", title="Heads", scale=alt.Scale(zero=True))
+        _rule = _base.mark_rule(color="#d4d4d0", strokeWidth=2).encode(x=_x, x2="observed:Q")
+        _expected = _base.transform_calculate(kind="'Expected by chance'").mark_point(
+            shape="circle", filled=False, size=110, strokeWidth=2, opacity=1
+        ).encode(x=_x, color=alt.Color("kind:N", scale=_kinds, legend=alt.Legend(title=None, orient="top")))
+        _observed = _base.transform_calculate(kind="'Observed'").mark_circle(size=90, opacity=1).encode(
+            x="observed:Q", color=alt.Color("kind:N", scale=_kinds))
+        return alt.layer(_rule, _expected, _observed).properties(width=250, height=46).facet(
+            row=alt.Row("Atlas set:N", sort=_sets, title=None,
+                        header=alt.Header(labelAngle=0, labelAlign="left", labelFontWeight="bold")),
+            title=title,
+        )
+
+    agreement_figure = alt.hconcat(
+        _panel("Overlap", "Overlap expected from layers", "Lexical task heads in the Atlas set"),
+        _panel("Among the m highest s", "Among m random heads", "Atlas heads among the m highest s"),
+    ).configure_view(stroke=None).configure_title(anchor="start")
+    return (agreement_figure,)
+
+
+@app.cell(hide_code=True)
 def _(alt, hr, lens_name, mo, per_head):
-    _sets = alt.Scale(domain=["Atlas task head", "Lexical task head"], range=["#2a78d6", "#eb6834"])
+    # Three hues pass the colour-vision checks for every pair on a map; a fourth does not, so
+    # the in-context heads that are neither task nor retrieval heads are grey.
+    _atlas_colours = alt.Scale(domain=["task", "parametric", "retrieval", "other in-context"],
+                               range=["#2a78d6", "#eb6834", "#1baf7a", "#8f8f8a"])
+    _ring = alt.Scale(domain=["Lexical task head"], range=["#262624"])
 
     def _map(lens):
         _base = alt.Chart(per_head).encode(
@@ -285,31 +332,35 @@ def _(alt, hr, lens_name, mo, per_head):
                      alt.Tooltip(f"s, {lens}:Q", format=".1%")],
         )
         _all = _base.mark_circle(size=6, color="#d4d4d0", opacity=1)
-        _atlas = _base.transform_filter("datum.Atlas == 'task'").transform_calculate(
-            set="'Atlas task head'"
-        ).mark_circle(size=60, opacity=1).encode(
-            color=alt.Color("set:N", scale=_sets, legend=alt.Legend(title=None, orient="top")))
+        _atlas = _base.transform_filter("datum.Atlas != 'none'").mark_circle(size=55, opacity=1).encode(
+            color=alt.Color("Atlas:N", scale=_atlas_colours,
+                            legend=alt.Legend(title="Atlas set", orient="top")))
         _lexical = _base.transform_filter(f"datum['lexical, {lens}']").transform_calculate(
             set="'Lexical task head'"
-        ).mark_point(shape="circle", filled=False, size=150, strokeWidth=2, opacity=1).encode(
-            color=alt.Color("set:N", scale=_sets))
+        ).mark_point(shape="circle", filled=False, size=170, strokeWidth=2, opacity=1).encode(
+            stroke=alt.Stroke("set:N", scale=_ring, legend=alt.Legend(title=None, orient="top")))
         return alt.layer(_all, _atlas, _lexical).properties(title=lens, width=300, height=300)
 
     mo.vstack([
         mo.md(r"""
-        ### 3.2 Where the lexical and the Atlas task heads lie
+        ### 3.2 Where the lexical task heads lie
 
-        The Atlas task heads lie mostly in layers 12 to 16, with a few in the first layers.
-        The lexical task
-        heads lie a few layers later, mostly between layers 13 and 23, with a handful in the
-        last layers (Figure 1). The heads in both sets sit where the two ranges meet, in
-        layers 13 to 16.
+        Each Atlas set has its own layer profile (Figure 2). The task heads lie mostly in
+        layers 12 to 16, with a few in the first layers, and the other in-context heads
+        mostly in layers 8 to 16. Most retrieval heads lie in the last eight layers. The
+        parametric heads form two groups: one in layers 15 to 22, and one in the last five
+        layers. The lexical task heads lie mostly between layers 13 and 23, with a handful
+        in the last layers. Most of those that are Atlas heads are task heads in layers 13
+        to 16 or parametric heads of the middle group; the rest, under J-head only, are two
+        retrieval heads and one other in-context head of the middle layers. No late
+        parametric head and no late retrieval head is a lexical task head.
         """),
         alt.hconcat(*[_map(lens_name[l]) for l in hr.LENSES]).configure_view(stroke=None),
         mo.md(
-            "**Figure 1.** Layer × head map of the 40 Atlas task heads (filled blue) and the "
-            "lexical task heads of each readout (orange rings). A ring around a blue dot is a "
-            "head in both sets. Hover a head for its score $s^h$."
+            "**Figure 2.** Layer × head map of the Atlas sets (filled dots) and each readout's "
+            "lexical task heads (dark rings). A head in more than one Atlas set takes the "
+            "colour of its task or retrieval role. A ring around a coloured dot is a lexical "
+            "task head in that Atlas set. Hover a head for its score $s^h$."
         ),
     ])
     return
