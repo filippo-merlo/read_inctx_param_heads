@@ -14,6 +14,9 @@ Logit-head readouts of [Head-JLens](https://github.com/filippo-merlo/head_level_
 - `heads_from_readings.py` is a marimo notebook. It asks whether the readings alone tell
   in-context from parametric heads, reading all 1,024 heads at the position and answer token
   that AttnLRP explains.
+- `lexical_task_heads.py` is a marimo notebook. It applies the lexical-task-head criterion of
+  [Yang et al. (2026)](https://arxiv.org/abs/2604.22027) to the same readings, with GPT-written
+  task words per question (`data/task_terms/`), and compares the result with the Atlas task heads.
 
 ## Setup
 
@@ -33,6 +36,8 @@ scripts/run_all.sh full 0 2 3 5                     # official pipeline on four 
 .venv/bin/python scripts/decode_targets.py --gpu 0    # all heads at the AttnLRP targets, for heads_from_readings.py
 HEADS_GPU=0 .venv/bin/marimo edit explore_heads.py
 .venv/bin/marimo edit heads_from_readings.py           # no GPU needed
+.venv/bin/python scripts/annotate_task_terms.py       # task words per question; needs AZURE_OPENAI_API_KEY and _ENDPOINT
+.venv/bin/marimo edit lexical_task_heads.py            # no GPU needed
 ```
 
 `scripts/run_atlas.sh` runs single stages; `scripts/run_all.sh smoke` runs every stage on
