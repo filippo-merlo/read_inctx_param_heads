@@ -16,7 +16,7 @@ Logit-head readouts of [Head-JLens](https://github.com/filippo-merlo/head_level_
   that AttnLRP explains.
 - `lexical_task_heads.py` is a marimo notebook. It applies the lexical-task-head criterion of
   [Yang et al. (2026)](https://arxiv.org/abs/2604.22027) to the same readings, with GPT-written
-  task words per question (`data/task_terms/`), and compares the result with the Atlas task heads.
+  task words per question (`data/task_terms/`), and compares the result with the Atlas heads.
 
 ## Setup
 
